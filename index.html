@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cybersecurity Password Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --weak: #ef4444;
+            --medium: #f59e0b;
+            --strong: #10b981;
+            --very-strong: #059669;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Header Credits Area */
+        .project-credits {
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.2);
+            color: #d1d5db; /* Light gray */
+            text-align: center;
+            padding: 15px 20px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .container {
+            max-width: 800px;
+            width: 90%;
+            margin: 40px auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+
+        /* Input Area */
+        .input-card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        input[type="password"], input[type="text"] {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 1.1rem;
+            border: 2px solid #334155;
+            border-radius: 10px;
+            background: #0f172a;
+            color: #ffffff;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="password"]:focus, input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        /* Strength Meter */
+        .meter-container {
+            height: 8px;
+            background: #334155;
+            border-radius: 4px;
+            margin-top: 15px;
+            overflow: hidden;
+        }
+
+        .meter-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.4s ease, background-color 0.4s ease;
+            border-radius: 4px;
+        }
+
+        .strength-label {
+            margin-top: 10px;
+            font-weight: 600;
+            text-align: right;
+            font-size: 0.95rem;
+        }
+
+        /* Results Grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            display: none; /* Hidden until typing starts */
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .card h3 {
+            font-size: 1.1rem;
+            color: var(--accent);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .time-display {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+
+        .disclaimer {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .suggestions-list, .pass-list {
+            list-style: none;
+        }
+
+        .suggestions-list li, .pass-list li {
+            position: relative;
+            padding-left: 20px;
+            margin-bottom: 10px;
+            color: #cbd5e1;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .suggestions-list li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }
+
+        .pass-list li {
+            background: #0f172a;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 1.05rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pass-label {
+            font-size: 0.75rem;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .results-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="project-credits">
+        This project was completed by the students of the Cybersecurity Department, College of Computer Science and Information Technology, under the supervision of Dr. Osama Adel Rahim and executed by the students Haider Hussein Sayed and Hassan Hadi.
+    </div>
+
+    <div class="container">
+        <h1>Advanced Password Analyzer</h1>
+        
+        <div class="input-card">
+            <div class="input-group">
+                <input type="password" id="passwordInput" placeholder="Enter a password to test..." dir="auto">
+            </div>
+            <div class="meter-container">
+                <div class="meter-fill" id="meter"></div>
+            </div>
+            <div class="strength-label" id="strengthText">Waiting for input...</div>
+        </div>
+
+        <div class="results-grid" id="resultsArea">
+            
+            <div class="card">
+                <h3>⏱️ Estimated Crack Time</h3>
+                <div class="time-display" id="crackTime">0 seconds</div>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">(Based on offline slow hashing algorithms)</p>
+                <div class="disclaimer">
+                    ⚠️ <strong>Note:</strong> This is a mathematical approximation based on entropy. Real-world compromise often happens much faster through phishing, data leaks, password reuse, or poor system security.
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🛡️ Improvement Suggestions</h3>
+                <ul class="suggestions-list" id="suggestionsList">
+                    </ul>
+            </div>
+
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>💡 Recommended Strong Passwords</h3>
+                <p style="color: var(--text-muted); margin-bottom: 15px; font-size: 0.9rem;">Consider using a password manager and adopting patterns like these (do not use these exact examples):</p>
+                <ul class="pass-list">
+                    <li>
+                        <span id="genMixed"></span>
+                        <span class="pass-label">Random Mixed</span>
+                    </li>
+                    <li>
+                        <span id="genPassphrase"></span>
+                        <span class="pass-label">Passphrase</span>
+                    </li>
+                    <li>
+                        <span id="genAlphaNum"></span>
+                        <span class="pass-label">Alphanumeric + Symbols</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pwdInput = document.getElementById('passwordInput');
+        const meter = document.getElementById('meter');
+        const strengthText = document.getElementById('strengthText');
+        const resultsArea = document.getElementById('resultsArea');
+        const crackTimeDisplay = document.getElementById('crackTime');
+        const suggestionsList = document.getElementById('suggestionsList');
+
+        // Generator Elements
+        const elMixed = document.getElementById('genMixed');
+        const elPassphrase = document.getElementById('genPassphrase');
+        const elAlphaNum = document.getElementById('genAlphaNum');
+
+        // Strength configurations
+        const strengthConfig = [
+            { label: 'Weak', color: 'var(--weak)', width: '25%' },
+            { label: 'Weak', color: 'var(--weak)', width: '25%' },
+            { label: 'Medium', color: 'var(--medium)', width: '50%' },
+            { label: 'Strong', color: 'var(--strong)', width: '75%' },
+            { label: 'Very Strong', color: 'var(--very-strong)', width: '100%' }
+        ];
+
+        // Core Words for Passphrase Generation
+        const words = ["Cyber", "Falcon", "Nebula", "Quantum", "Vertex", "Phantom", "Horizon", "Crimson", "Velocity", "Shield", "Tango", "Echo", "Sierra", "Logic", "Matrix"];
+
+        function generateStrongExamples() {
+            // 1. Random Mixed
+            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+            let mixed = "";
+            for(let i=0; i<16; i++) mixed += charset[Math.floor(Math.random() * charset.length)];
+            
+            // 2. Passphrase
+            let phrase = `${words[Math.floor(Math.random()*words.length)]}-${words[Math.floor(Math.random()*words.length)]}-${words[Math.floor(Math.random()*words.length)]}-${Math.floor(Math.random()*999)}`;
+            
+            // 3. Alphanumeric with Symbols
+            let alpha = "";
+            const alphaCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const numSym = "0123456789!@#$";
+            for(let i=0; i<10; i++) alpha += alphaCharset[Math.floor(Math.random() * alphaCharset.length)];
+            for(let i=0; i<5; i++) alpha += numSym[Math.floor(Math.random() * numSym.length)];
+            
+            // Shuffle alphanumeric string roughly
+            alpha = alpha.split('').sort(() => 0.5 - Math.random()).join('');
+
+            elMixed.textContent = mixed;
+            elPassphrase.textContent = phrase;
+            elAlphaNum.textContent = alpha;
+        }
+
+        // Real-time analysis listener
+        pwdInput.addEventListener('input', function() {
+            const val = pwdInput.value;
+            
+            if (val.length === 0) {
+                meter.style.width = '0%';
+                strengthText.textContent = 'Waiting for input...';
+                strengthText.style.color = 'var(--text-muted)';
+                resultsArea.style.display = 'none';
+                return;
+            }
+
+            // zxcvbn analysis handles Unicode & standard entropy logic
+            const result = zxcvbn(val);
+            const score = result.score; // 0 to 4
+            const config = strengthConfig[score];
+
+            // Update UI Meter
+            meter.style.width = config.width;
+            meter.style.backgroundColor = config.color;
+            strengthText.textContent = config.label;
+            strengthText.style.color = config.color;
+
+            // Show Results Area
+            resultsArea.style.display = 'grid';
+
+            // Update Crack Time
+            let cTime = result.crack_times_display.offline_slow_hashing_1e4_per_second;
+            if(cTime === "less than a second") cTime = "Instantly (< 1s)";
+            crackTimeDisplay.textContent = cTime;
+
+            // Update Suggestions
+            suggestionsList.innerHTML = '';
+            let warningsAndSuggestions = [];
+            
+            if (result.feedback.warning) {
+                warningsAndSuggestions.push(`<strong>Warning:</strong> ${result.feedback.warning}`);
+            }
+            if (result.feedback.suggestions && result.feedback.suggestions.length > 0) {
+                warningsAndSuggestions = warningsAndSuggestions.concat(result.feedback.suggestions);
+            }
+
+            // Fallback suggestions if zxcvbn provides none but score is still low
+            if (warningsAndSuggestions.length === 0 && score < 4) {
+                if (val.length < 12) warningsAndSuggestions.push("Increase the length of your password to at least 12 characters.");
+                if (!/[A-Z]/.test(val)) warningsAndSuggestions.push("Add uppercase letters.");
+                if (!/[a-z]/.test(val)) warningsAndSuggestions.push("Add lowercase letters.");
+                if (!/[0-9]/.test(val)) warningsAndSuggestions.push("Include numbers.");
+                if (!/[^A-Za-z0-9]/.test(val)) warningsAndSuggestions.push("Add special symbols (e.g., !, @, #, $, %)");
+                warningsAndSuggestions.push("Avoid personal names, birthdays, or common dictionary words.");
+            } else if (score === 4 && warningsAndSuggestions.length === 0) {
+                warningsAndSuggestions.push("Excellent! Your password is highly resilient against brute-force attacks.");
+            }
+
+            warningsAndSuggestions.forEach(text => {
+                const li = document.createElement('li');
+                li.innerHTML = text;
+                suggestionsList.appendChild(li);
+            });
+
+            // Generate new strong examples on every few keystrokes or on start
+            if(val.length === 1) {
+                generateStrongExamples();
+            }
+        });
+
+        // Initialize examples on load
+        generateStrongExamples();
+    </script>
+</body>
+</html>
